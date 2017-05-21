@@ -1,0 +1,150 @@
+---
+title: "Reproducible Research: Peer Assessment 2"
+author: "Jon Biggs"
+date: "21 May 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+cache = TRUE
+```
+
+# An Analysis of the Population Health and Economic Impact by Severe Weather Events - Based on U.S. National Oceanic and Atmospheric Administration's storm database
+
+# Synopsis
+
+This report is an analysis of the impact of different weather events on public health and economy based on the storm database collected from the U.S. National Oceanic and Atmospheric Administration’s (NOAA). The data used were estimates of fatalities, injuries, property and crop damage (since 1996) to determine which types of event are most harmful to the population health and economy. It was found that high temperatures and tornado were most harmful with respect to population health, while hurricane/high wind had the greatest economic impacts.
+
+# Data Processing
+
+The NOAA Storm Database to use will be obtained from the following [link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2).
+
+```{r}
+
+# download file
+if (!file.exists("repdata-data-StormData.csv.bz2")) {
+    download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", 
+        "repdata-data-StormData.csv.bz2")
+}
+# unzip file
+if (!file.exists("repdata-data-StormData.csv")) {
+    bunzip2("repdata-data-StormData.csv.bz2", "repdata-data-StormData.csv", remove = FALSE)
+}
+# read data
+StormData <- read.csv("repdata-data-StormData.csv")
+dim(StormData)
+
+```
+There should be 902297 records on 37 variables.
+
+According to NOAA the data recording start from Jan. 1950. At that time they recorded one event type, tornado. They add more events gradually and only from Jan. 1996 they start recording all events type. The data was therefore limited to that since 1996.
+
+```{r}
+
+# limit date range
+if (dim(StormData)[2] == 37) {
+    StormData$year <- as.numeric(format(as.Date(StormData$BGN_DATE, format = "%m/%d/%Y %H:%M:%S"), "%Y"))
+}
+MyStorm <- StormData[StormData$year >= 1995, ]
+
+```
+
+The data was then further subsetted to focus on population health and economic damage data.
+
+```{r}
+# reduce columns
+columns <- c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", 
+    "CROPDMGEXP")
+MyStorm <- MyStorm[columns]
+
+```
+
+The 'CROPDMGEXP' is the exponent values for 'CROPDMG' (crop damage). In the same way, 'PROPDMGEXP' is the exponent values for 'PROPDMG' (property damage). 
+(B or b = Billion, M or m = Million, K or k = Thousand, H or h = Hundred). 
+The number from one to ten represent the power of ten (10^The number). 
+The symbols "-", "+" and "?" refers to less than, greater than and low certainty. These will be ignored.
+The property damage and crop damage will be added together to calclate the economic damage.
+
+```{r}
+# convert letter exponents to integers
+MyStorm$PROPDMGEXP <- as.character(MyStorm$PROPDMGEXP)
+MyStorm[(MyStorm$PROPDMGEXP == "K"), ]$PROPDMGEXP <- 3
+MyStorm[(MyStorm$PROPDMGEXP == "M"), ]$PROPDMGEXP <- 6
+MyStorm[(MyStorm$PROPDMGEXP == "m"), ]$PROPDMGEXP <- 6
+MyStorm[(MyStorm$PROPDMGEXP == "B"), ]$PROPDMGEXP <- 9
+
+MyStorm$CROPDMGEXP <- as.character(MyStorm$CROPDMGEXP)
+MyStorm[(MyStorm$CROPDMGEXP == "K"), ]$CROPDMGEXP <- 3
+MyStorm[(MyStorm$CROPDMGEXP == "k"), ]$CROPDMGEXP <- 3
+MyStorm[(MyStorm$CROPDMGEXP == "M"), ]$CROPDMGEXP <- 6
+MyStorm[(MyStorm$CROPDMGEXP == "m"), ]$CROPDMGEXP <- 6
+MyStorm[(MyStorm$CROPDMGEXP == "B"), ]$CROPDMGEXP <- 9
+
+# multiply property and crops damage by 10 raised to the power of the exponent
+suppressWarnings(MyStorm$PROPDMG <- MyStorm$PROPDMG * 10^as.numeric(MyStorm$PROPDMGEXP))
+suppressWarnings(MyStorm$CROPDMG <- MyStorm$CROPDMG * 10^as.numeric(MyStorm$CROPDMGEXP))
+
+# calculate economic damage (property damage + crops damage)
+suppressWarnings(MyStorm$ECONOMIC <- MyStorm$PROPDMG + MyStorm$CROPDMG)
+
+```
+
+#Results
+
+## Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+The top 15 events for fatalities and then for injuries
+
+```{r}
+
+Fatal <- aggregate(MyStorm$FATALITIES, by = list(MyStorm$EVTYPE), "sum")
+names(Fatal) <- c("Event", "Fatalities")
+Fatal <- Fatal[order(-Fatal$Fatalities), ][1:15, ]
+Fatal
+
+
+Injury <- aggregate(MyStorm$INJURIES, by = list(MyStorm$EVTYPE), "sum")
+names(Injury) <- c("Event", "Injuries")
+Injury <- Injury[order(-Injury$Injuries), ][1:15, ]
+Injury
+
+```
+
+The data is then presentated as a boxplot.
+
+```{r}
+
+par(mfrow = c(1, 2), mar = c(12, 5, 3, 2), mgp = c(3, 1, 0), cex = 0.8, las = 3)
+barplot(Fatal$Fatalities, names.arg = Fatal$Event, col = 'blue',
+        main = 'Top 15 Weather Events for Fatalities', ylab = 'Number of Fatalities')
+barplot(Injury$Injuries, names.arg = Injury$Event, col = 'green',
+        main = 'Top 15 Weather Events for Injuries', ylab = 'Number of Injuries')
+
+```
+
+The data shows that EXCESSIVE HEAT caused the most fatalities and TORNADO caused the most injuries since 1996.
+
+## Across the United States, which types of events have the greatest economic consequences?
+
+The top 12 events for economic damage were:
+
+```{r}
+
+Economic <- aggregate(MyStorm$ECONOMIC, by = list(MyStorm$EVTYPE), "sum")
+names(Economic) <- c("Event", "Damage")
+Economic <- Economic[order(-Economic$Damage), ][1:12, ]
+Economic
+
+par(mfrow = c(1, 2), mar = c(12, 5, 3, 2), mgp = c(3, 1, 0), cex = 0.8, las = 3)
+barplot(Economic$Damage, names.arg = Economic$Event, col = 'blue',
+        main = 'Top 12 Weather Events for Ecomonic Damage', ylab = 'Economic Damage')
+
+```
+
+The data shows that HURRICANE caused the most economic damage since 1996.
+
+#Conclusions
+
+It was found that excessive heat and tornado were the most harmful weather events with respect to population health, while hurricane/high winds had the greatest economic impact.
+
