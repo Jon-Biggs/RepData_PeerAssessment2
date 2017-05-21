@@ -7,14 +7,13 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-cache = TRUE
 ```
 
 # An Analysis of the Population Health and Economic Impact by Severe Weather Events - Based on U.S. National Oceanic and Atmospheric Administration's storm database
 
 # Synopsis
 
-This report is an analysis of the impact of different weather events on public health and economy based on the storm database collected from the U.S. National Oceanic and Atmospheric Administration’s (NOAA). The data used were estimates of fatalities, injuries, property and crop damage (since 1996) to determine which types of event are most harmful to the population health and economy. It was found that high temperatures and tornado were most harmful with respect to population health, while hurricane/high wind had the greatest economic impacts.
+This report is an analysis of the impact of different weather events on public health and economy based on the storm database collected from the U.S. National Oceanic and Atmospheric Administration’s (NOAA). The data used were estimates of fatalities, injuries, property and crop damage (since 1996) to determine which types of event are most harmful to the population health and economy. It was found that high temperatures and tornado were most harmful with respect to population health, while tornadoes/high wind had the greatest economic impacts.
 
 # Data Processing
 
@@ -38,7 +37,9 @@ dim(StormData)
 ```
 There should be 902297 records on 37 variables.
 
-According to NOAA the data recording start from Jan. 1950. At that time they recorded one event type, tornado. They add more events gradually and only from Jan. 1996 they start recording all events type. The data was therefore limited to that since 1996.
+According to NOAA the data recording start from Jan. 1950. At that time they recorded one event type, tornado. They add more events gradually and only from Jan. 1996 they start recording all events type. 
+
+The data ends in 2011 so the data was limited to that since 1992 to provide 20 years of data.
 
 ```{r}
 
@@ -46,7 +47,7 @@ According to NOAA the data recording start from Jan. 1950. At that time they rec
 if (dim(StormData)[2] == 37) {
     StormData$year <- as.numeric(format(as.Date(StormData$BGN_DATE, format = "%m/%d/%Y %H:%M:%S"), "%Y"))
 }
-MyStorm <- StormData[StormData$year >= 1995, ]
+MyStorm <- StormData[StormData$year >= 1992, ]
 
 ```
 
@@ -71,17 +72,14 @@ The property damage and crop damage will be added together to calclate the econo
 MyStorm$PROPDMGEXP <- as.character(MyStorm$PROPDMGEXP)
 MyStorm[(MyStorm$PROPDMGEXP == "K"), ]$PROPDMGEXP <- 3
 MyStorm[(MyStorm$PROPDMGEXP == "M"), ]$PROPDMGEXP <- 6
-MyStorm[(MyStorm$PROPDMGEXP == "m"), ]$PROPDMGEXP <- 6
 MyStorm[(MyStorm$PROPDMGEXP == "B"), ]$PROPDMGEXP <- 9
 
 MyStorm$CROPDMGEXP <- as.character(MyStorm$CROPDMGEXP)
 MyStorm[(MyStorm$CROPDMGEXP == "K"), ]$CROPDMGEXP <- 3
-MyStorm[(MyStorm$CROPDMGEXP == "k"), ]$CROPDMGEXP <- 3
 MyStorm[(MyStorm$CROPDMGEXP == "M"), ]$CROPDMGEXP <- 6
-MyStorm[(MyStorm$CROPDMGEXP == "m"), ]$CROPDMGEXP <- 6
 MyStorm[(MyStorm$CROPDMGEXP == "B"), ]$CROPDMGEXP <- 9
 
-# multiply property and crops damage by 10 raised to the power of the exponent
+# multiply property and crops damage by 10 to the power of the exponent
 suppressWarnings(MyStorm$PROPDMG <- MyStorm$PROPDMG * 10^as.numeric(MyStorm$PROPDMGEXP))
 suppressWarnings(MyStorm$CROPDMG <- MyStorm$CROPDMG * 10^as.numeric(MyStorm$CROPDMGEXP))
 
@@ -127,24 +125,24 @@ The data shows that EXCESSIVE HEAT caused the most fatalities and TORNADO caused
 
 ## Across the United States, which types of events have the greatest economic consequences?
 
-The top 12 events for economic damage were:
+The top 15 events for economic damage were:
 
 ```{r}
 
 Economic <- aggregate(MyStorm$ECONOMIC, by = list(MyStorm$EVTYPE), "sum")
 names(Economic) <- c("Event", "Damage")
-Economic <- Economic[order(-Economic$Damage), ][1:12, ]
+Economic <- Economic[order(-Economic$Damage), ][1:15, ]
 Economic
 
-par(mfrow = c(1, 2), mar = c(12, 5, 3, 2), mgp = c(3, 1, 0), cex = 0.8, las = 3)
-barplot(Economic$Damage, names.arg = Economic$Event, col = 'blue',
-        main = 'Top 12 Weather Events for Ecomonic Damage', ylab = 'Economic Damage')
+par(mfrow = c(1, 2), mar = c(5, 4, 4, 2), mgp = c(3, 1, 0), cex = 0.8, las = 3)
+barplot(Economic$Damage, width = 2, names.arg = Economic$Event, col = 'blue',
+        main = 'Top 15 Weather Events for Ecomonic Damage', ylab = 'Economic Damage')
 
 ```
 
-The data shows that HURRICANE caused the most economic damage since 1996.
+The data shows that a number of events relating to tornados/high wind/hail caused the most economic damage.
 
 #Conclusions
 
-It was found that excessive heat and tornado were the most harmful weather events with respect to population health, while hurricane/high winds had the greatest economic impact.
+It was found that excessive heat and tornado were the most harmful weather events with respect to population health, while tornadoes/high winds had the greatest economic impact.
 
